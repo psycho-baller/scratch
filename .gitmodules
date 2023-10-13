@@ -1,0 +1,3 @@
+[submodule "ruby/random-knocks"]
+	path = ruby/random-knocks
+	url = https://github.com/psycho-baller/random-knocks.git
