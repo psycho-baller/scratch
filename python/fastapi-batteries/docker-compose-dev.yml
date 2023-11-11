@@ -13,19 +13,19 @@ services:
       - 8000
     env_file: ".env"
     depends_on:
-      - database
+      - vector_database
     links:
       - caddy_reverse_proxy:storage.localhost
 
-  database:
-    container_name: ${PROJECT_NAME}_database
-    image: bitnami/postgresql:latest
+  vector_database:
+    container_name: ${PROJECT_NAME}_vdatabase
+    image: ankane/pgvector # bitnami/postgresql:latest
     restart: always
     env_file: ".env"
     user: root
     volumes:
       - ./create-dbs.sql:/docker-entrypoint-initdb.d/create-dbs.sql
-    # - ./db_docker:/bitnami/postgresql
+      # - ./db_docker:/var/lib/postgresql/data
     ports:
       - 5454:5432 # Remove this on production
     expose:
@@ -54,7 +54,7 @@ services:
       - ./backend/app:/code
       # - "${EB_LOG_BASE_DIR}/php-app:/var/log/celery"
     depends_on:
-      - database
+      - vector_database
       - redis_server
     env_file: .env
 
@@ -71,7 +71,7 @@ services:
       - ./backend/app:/code
       # - "${EB_LOG_BASE_DIR}/php-app:/var/log/celery-beat"
     depends_on:
-      - database
+      - vector_database
       - redis_server
     env_file: .env
 

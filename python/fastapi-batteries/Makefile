@@ -6,7 +6,7 @@ define SERVERS_JSON
 {
 	"Servers": {
 		"1": {
-			"Name": "fastapi-alembic",
+			"Name": "fastapi-vector",
 			"Group": "Servers",
 			"Host": "$(DATABASE_HOST)",
 			"Port": 5432,
