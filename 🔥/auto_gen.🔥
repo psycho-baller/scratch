@@ -1,0 +1,5 @@
+from python import Python
+
+fn main() raises:
+  let pyautogen = Python.import_module("numpy")
+  print(pyautogen)
