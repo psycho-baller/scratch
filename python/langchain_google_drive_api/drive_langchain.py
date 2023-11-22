@@ -20,7 +20,7 @@ CLIENT_SECRET_FILE = 'token.json'
 CREDS_FILE = 'credentials.json'
 APPLICATION_NAME = 'Drive API Python Quickstart'
 
-llm = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo-16k")
+llm = ChatOpenAI(temperature=0, model_name="gpt-4")
 
 def generate_actionable_takeaways(docs):
     """Generates actionable takeaways from a list of documents
@@ -34,17 +34,19 @@ def generate_actionable_takeaways(docs):
     text_splitter = RecursiveCharacterTextSplitter(separators=["\n\n", "\n", "\r\n\r\n\r\n"], chunk_size=10000, chunk_overlap=200)
     split_docs = text_splitter.split_documents(docs)
     map_prompt = """
-Write a concise summary of the following:
+try to understand the user's point of view and put yourself in their shoes. Then, generate clear, straightforward actionable takeaways from the following text:
 "{text}"
-CONCISE SUMMARY:
+
+ACTIONABLE TAKEAWAYS:
 """
     map_prompt_template = PromptTemplate(template=map_prompt, input_variables=["text"])
-    
+
     combine_prompt = """
-Write a concise summary of the following text delimited by triple backquotes.
-Return your response in bullet points which covers the key points of the text.
-```{text}```
-BULLET POINT SUMMARY:
+you will be given a list of actionable takeaways. You are required to refine them and make them more precise and thorough so that it becomes even more actionable.
+OLD ACTIONABLE TAKEAWAYS:
+{text}
+
+REFINED ACTIONABLE TAKEAWAYS:
 """
     combine_prompt_template = PromptTemplate(template=combine_prompt, input_variables=["text"])
 
@@ -52,7 +54,7 @@ BULLET POINT SUMMARY:
                                      chain_type='map_reduce',
                                      map_prompt=map_prompt_template,
                                      combine_prompt=combine_prompt_template,
-#                                      verbose=True
+                                     verbose=True
                                     )
     output = summary_chain.run(split_docs)
     return output
@@ -86,10 +88,10 @@ def main():
         print("token.json not found. Please run drive_file_listener.py first.")
     try:
         loader = GoogleDriveLoader(
-    # folder_id="1yucgL9WGgWZdM1TOuKkeghlPizuzMYb5",
-    document_ids=["1vuuvRgsPtyE1O6fmH8iicV1qP5McYV-VR5k0fLl7py0"],
     token_path=CLIENT_SECRET_FILE,
     credentials_path=CREDS_FILE,
+    document_ids=["1vuuvRgsPtyE1O6fmH8iicV1qP5McYV-VR5k0fLl7py0"],
+    # folder_id="1yucgL9WGgWZdM1TOuKkeghlPizuzMYb5",
     # file_types=["document", "sheet"],
     # Optional: configure whether to recursively fetch files from subfolders. Defaults to False.
     # recursive=False,
