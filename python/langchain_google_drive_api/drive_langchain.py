@@ -54,7 +54,7 @@ BULLET POINT SUMMARY:
                                      combine_prompt=combine_prompt_template,
 #                                      verbose=True
                                     )
-    output = summary_chain.run(docs)
+    output = summary_chain.run(split_docs)
     return output
 
 def get_credentials():
