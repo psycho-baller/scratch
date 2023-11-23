@@ -20,7 +20,29 @@ CLIENT_SECRET_FILE = 'token.json'
 CREDS_FILE = 'credentials.json'
 APPLICATION_NAME = 'Drive API Python Quickstart'
 
-llm = ChatOpenAI(temperature=0, model_name="gpt-4")
+llm = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo-16k")
+
+def get_credentials():
+    """Gets valid user credentials from storage."""
+    creds = None
+    # The file token.json stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    if os.path.exists("token.json"):
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                "credentials.json", SCOPES
+            )
+            creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open("token.json", "w") as token:
+          token.write(creds.to_json())
+    return creds
 
 def generate_actionable_takeaways(docs):
     """Generates actionable takeaways from a list of documents
@@ -59,27 +81,20 @@ REFINED ACTIONABLE TAKEAWAYS:
     output = summary_chain.run(split_docs)
     return output
 
-def get_credentials():
-    """Gets valid user credentials from storage."""
-    creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                "credentials.json", SCOPES
-            )
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open("token.json", "w") as token:
-          token.write(creds.to_json())
-    return creds
+def get_most_recent_file_id():
+    """Gets the most recently added file id from the Google Drive API
+    
+    Returns:
+        most_recent_file_id (str): the most recently added file id
+    """
+    service = build("drive", "v3", credentials=get_credentials())
+
+    # get the most recently added file
+    results = service.files().list(pageSize=1, fields="nextPageToken, files(id, name)", orderBy="createdTime desc").execute()
+    items = results.get('files', [])
+    most_recent_file_id = items[0]['id']
+    return most_recent_file_id
+
 def main():
     """Shows basic usage of the Google Drive API."""
     
@@ -87,10 +102,11 @@ def main():
     if not os.path.exists(CLIENT_SECRET_FILE):
         print("token.json not found. Please run drive_file_listener.py first.")
     try:
+        most_recent_file_id = get_most_recent_file_id()
         loader = GoogleDriveLoader(
     token_path=CLIENT_SECRET_FILE,
     credentials_path=CREDS_FILE,
-    document_ids=["1vuuvRgsPtyE1O6fmH8iicV1qP5McYV-VR5k0fLl7py0"],
+    document_ids=[most_recent_file_id],
     # folder_id="1yucgL9WGgWZdM1TOuKkeghlPizuzMYb5",
     # file_types=["document", "sheet"],
     # Optional: configure whether to recursively fetch files from subfolders. Defaults to False.
