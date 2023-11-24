@@ -81,11 +81,8 @@ REFINED ACTIONABLE TAKEAWAYS:
     output = summary_chain.run(split_docs)
     return output
 
-def get_most_recent_file_id():
-    """Gets the most recently added file id from the Google Drive API
-    
-    Returns:
-        most_recent_file_id (str): the most recently added file id
+def get_most_recent_file_id() -> str:
+    """Returns the most recently added file id from the Google Drive API
     """
     service = build("drive", "v3", credentials=get_credentials())
 
@@ -96,12 +93,11 @@ def get_most_recent_file_id():
     return most_recent_file_id
 
 def main():
-    """Shows basic usage of the Google Drive API."""
-    
     # check if token.json exists
     if not os.path.exists(CLIENT_SECRET_FILE):
         print("token.json not found. Please run drive_file_listener.py first.")
     try:
+        # Step 1: get the text to actionify
         most_recent_file_id = get_most_recent_file_id()
         loader = GoogleDriveLoader(
     token_path=CLIENT_SECRET_FILE,
@@ -113,15 +109,20 @@ def main():
     # recursive=False,
 )
         docs = loader.load()
+        
+        # Step 2: generate actionable takeaways
         actionable_takeaways = generate_actionable_takeaways(docs)
+        
+        # Step 3: send actionable takeaways to the user
         print(f"Actionable takeaways: {actionable_takeaways}")
+        return actionable_takeaways
+        
         
         # chain = load_summarize_chain(llm, chain_type="stuff")
         # summary = chain.run(docs)
         # print(f"Summary of {docs}: {summary}")
     except HttpError as e:
         print(e)
-        
 
 if __name__ == '__main__':
     main()
