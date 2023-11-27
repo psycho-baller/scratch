@@ -1,5 +1,5 @@
+// create URI: https://docs.obsidian.md/Reference/TypeScript+API/Plugin/registerObsidianProtocolHandler
 import open from 'open';
-
 const baseObsidianUri = 'obsidian://actions-uri';
 const baseDailyNoteUri = `${baseObsidianUri}/daily-note`;
 const baseWeeklyNoteUri = `${baseObsidianUri}/weekly-note`;
@@ -49,6 +49,10 @@ function appendToDailyNote(note) {
   open(url);
 }
 
+/**
+ * docs: https://czottmann.github.io/obsidian-actions-uri/routes/weekly-note/
+ * @returns  {Promise<string>} - the contents of the weekly note
+ */
 async function getWeeklyNote() {
   const uri = uris.weeklyNote.get + `?x-success=http://localhost:3000
   &x-error=http://localhost:3000`
