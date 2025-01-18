@@ -59,7 +59,7 @@ async function getWeeklyNote() {
   const uriWithVault = addVaultToUri(uri)
   const url = encodeURI(uriWithVault)
   console.log(`Opening ${url}`);
-  return await open(url);
+  return open(url);
 }
 
 

@@ -2,15 +2,20 @@
   "name": "js-scratch",
   "version": "1.0.0",
   "description": "playin around",
-  "main": "obsidianAutomations.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node obsidianUri.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "open": "^9.1.0"
-  }
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "module": "index.ts"
 }

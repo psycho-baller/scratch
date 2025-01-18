@@ -2,6 +2,8 @@
 .DS_Store
 .cache
 venv
+.venv
 .env
 __pycache__
 node_modules
+cpsc383
