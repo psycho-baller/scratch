@@ -6,4 +6,4 @@ venv
 .env
 __pycache__
 node_modules
-cpsc383
+.codegen/**
