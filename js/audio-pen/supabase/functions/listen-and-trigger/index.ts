@@ -1,5 +1,6 @@
 // Import Supabase Edge Runtime type definitions
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@std/dotenv/load";
 // Import the Trigger.dev tasks SDK from npm
 // import { tasks } from "@trigger.dev/sdk/v3";
 import { tasks } from "npm:@trigger.dev/sdk@latest/v3";
@@ -71,6 +72,40 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+/**
+ * Refreshes the OAuth token using your stored refresh token.
+ */
+async function getAccessToken(): Promise<string> {
+  const refreshToken = Deno.env.get("OAUTH_REFRESH_TOKEN");
+  const clientId = Deno.env.get("CLIENT_ID");
+  const clientSecret = Deno.env.get("CLIENT_SECRET");
+  const redirectUri = Deno.env.get("REDIRECT_URI") || "http://localhost"; // Your redirect URI if needed
+
+  if (!refreshToken || !clientId || !clientSecret) {
+    throw new Error("Missing OAuth credentials in environment variables.");
+  }
+
+  const params = new URLSearchParams();
+  params.append("client_id", clientId);
+  params.append("client_secret", clientSecret);
+  params.append("refresh_token", refreshToken);
+  params.append("grant_type", "refresh_token");
+
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to refresh access token: ${errorText}`);
+  }
+
+  const tokenData = await response.json();
+  return tokenData.access_token;
+}
 
 /**
  * Generates an OAuth token using your service account credentials.
