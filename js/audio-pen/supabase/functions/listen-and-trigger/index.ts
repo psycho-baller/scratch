@@ -18,23 +18,21 @@ Deno.serve(async (req) => {
       return new Response("Method Not Allowed", { status: 405 });
     }
 
-    // Extract the resource state header.
     const resourceState = req.headers.get("X-Goog-Resource-State");
     let taskResult: any = null;
 
-    // Proceed if the notification indicates a change or an addition.
     if (resourceState === "change" || resourceState === "add") {
-      // Extract the file ID from the header "X-Goog-Resource-Id".
+      // Assume fileId is provided in header "X-Goog-Resource-Id"
       const fileId = req.headers.get("X-Goog-Resource-Id");
       if (!fileId) {
         console.error("File ID not provided in headers.");
         return new Response("Bad Request: Missing file ID", { status: 400 });
       }
 
-      // Obtain an OAuth token using service account credentials.
-      const oauthToken = await getOAuthToken();
+      // Use the refresh token flow to get an access token
+      const oauthToken = await getAccessToken();
 
-      // Fetch file metadata from the Google Drive API.
+      // Fetch file metadata from the Drive API
       const metadataResponse = await fetch(
         `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,mimeType,name`,
         {
@@ -48,7 +46,6 @@ Deno.serve(async (req) => {
       }
 
       const metadata = await metadataResponse.json();
-
       // Check if the file is a Google Docs file.
       if (metadata.mimeType === "application/vnd.google-apps.document") {
         console.log("New Google Docs file detected:", metadata.name);
@@ -60,7 +57,7 @@ Deno.serve(async (req) => {
 
     // Return a successful response. You can include result data as needed.
     return new Response(
-      JSON.stringify({ status: "success" }),
+      JSON.stringify({ status: "meow" }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
   } catch (error) {
@@ -82,6 +79,11 @@ async function getAccessToken(): Promise<string> {
   const clientSecret = Deno.env.get("CLIENT_SECRET");
   const redirectUri = Deno.env.get("REDIRECT_URI") || "http://localhost"; // Your redirect URI if needed
 
+  console.log("Fetching access token...", {
+    refreshToken,
+    clientId,
+    clientSecret,
+  });
   if (!refreshToken || !clientId || !clientSecret) {
     throw new Error("Missing OAuth credentials in environment variables.");
   }
