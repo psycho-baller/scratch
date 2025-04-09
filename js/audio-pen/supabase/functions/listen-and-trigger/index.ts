@@ -11,58 +11,71 @@ import { create, getNumericDate } from "https://deno.land/x/djwt@v2.8/mod.ts";
 
 const GOOGLE_OAUTH_TOKEN = Deno.env.get("GOOGLE_OAUTH_TOKEN");
 // Start the Deno server to handle incoming HTTP requests
+// Start a server using Deno.serve that will handle incoming HTTP requests.
 Deno.serve(async (req) => {
   try {
-    // Only allow POST requests.
+    // Check if the incoming request method is POST; if not, return a 405 Method Not Allowed response.
     if (req.method !== "POST") {
       return new Response("Method Not Allowed", { status: 405 });
     }
 
+    // Retrieve the "X-Goog-Resource-State" header which indicates the type of change (e.g. "change" or "add").
     const resourceState = req.headers.get("X-Goog-Resource-State");
+    // Initialize a variable to store the result of the task trigger, if applicable.
     let taskResult: any = null;
 
+    // If the resource state is either "change" or "add", proceed to process the notification.
     if (resourceState === "change" || resourceState === "add") {
-      // Assume fileId is provided in header "X-Goog-Resource-Id"
+      // Retrieve the file ID from the "X-Goog-Resource-Id" header.
       const fileId = req.headers.get("X-Goog-Resource-Id");
+      // If the file ID is missing, log an error and return a 400 Bad Request response.
       if (!fileId) {
         console.error("File ID not provided in headers.");
         return new Response("Bad Request: Missing file ID", { status: 400 });
       }
 
-      // Use the refresh token flow to get an access token
+      // Call a helper function getAccessToken() to obtain an OAuth token via the refresh token flow.
       const oauthToken = await getAccessToken();
 
-      // Fetch file metadata from the Drive API
+      // Use the access token to fetch file metadata from the Google Drive API.
+      // The URL requests specific fields: id, mimeType, and name.
       const metadataResponse = await fetch(
         `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,mimeType,name`,
         {
+          // Set the Authorization header with the obtained token.
           headers: { Authorization: `Bearer ${oauthToken}` },
         },
       );
 
+      // If the metadata request was not successful, retrieve the error text and throw an error.
       if (!metadataResponse.ok) {
         const errText = await metadataResponse.text();
         throw new Error(`Failed to fetch file metadata: ${errText}`);
       }
 
+      // Parse the response body as JSON to obtain the file metadata.
       const metadata = await metadataResponse.json();
-      // Check if the file is a Google Docs file.
+      // Check if the file's mimeType indicates that it's a Google Docs document.
       if (metadata.mimeType === "application/vnd.google-apps.document") {
+        // Log that a new Google Docs file has been detected (logging its name).
         console.log("New Google Docs file detected:", metadata.name);
+        // Call a helper function callTriggerDevTask() to trigger your Trigger.dev task with the metadata.
         taskResult = await callTriggerDevTask(metadata);
       } else {
+        // If the file is not a Google Docs file, log that it is being ignored.
         console.log("File is not a Google Docs file; ignoring.");
       }
     }
 
-    // Return a successful response. You can include result data as needed.
+    // Return a JSON response indicating success. In this example, the status is set to "meow".
     return new Response(
       JSON.stringify({ status: "meow" }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
   } catch (error) {
+    // Log any error that occurs during the processing of the request.
     console.error("Error triggering task:", error);
-    // Return an error response in case the task invocation fails.
+    // Return a 500 Internal Server Error response with a JSON message.
     return new Response(
       JSON.stringify({ status: "error", message: "Task invocation failed" }),
       { status: 500, headers: { "Content-Type": "application/json" } },
