@@ -309,7 +309,7 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.listen-and-trigger]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/listen-and-trigger/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -317,3 +317,14 @@ entrypoint = "./functions/listen-and-trigger/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/listen-and-trigger/*.html" ]
+
+[functions.google-callback]
+enabled = true
+verify_jwt = false
+import_map = "./functions/google-callback/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/google-callback/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/google-callback/*.html" ]
