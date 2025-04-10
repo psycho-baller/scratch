@@ -58,8 +58,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // Initialize a variable to store the result from calling a Trigger.dev task.
     let taskResult: unknown = null;
 
-    // If resource state indicates a change or a new addition, process the notification.
-    if (resourceState === "change" || resourceState === "add") {
+    // If resource state indicates a new addition, process the notification.
+    if (resourceState === "add") {
       // Retrieve the resource (file) ID from the header.
       const resourceId: string | null = req.headers.get("X-Goog-Resource-Id");
       if (!resourceId) {
@@ -73,15 +73,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
       // Use changes.list to get the mapping from resource id to real file id.
       // (For simplicity, we assume getChanges returns an array of changes.)
       const changes: DriveChange[] = await getChanges(oauthToken);
-      // Here we attempt to find a change whose resourceId matches the one we received.
-      const matchingChange = changes.find((c: DriveChange) =>
-        c.resourceId === resourceId
-      );
 
-      if (!matchingChange || !matchingChange.fileId) {
-        throw new Error("Could not match resource id with a valid file id.");
+      const fileId: string | undefined = changes.at(-1)?.fileId;
+
+      if (!fileId) {
+        console.error("File ID not found in changes.");
+        return new Response("Bad Request: Missing file ID", { status: 400 });
       }
-      const fileId: string = matchingChange.fileId;
 
       // Fetch file metadata using the actual fileId from Google Drive.
       const metadataResponse: Response = await fetch(
@@ -119,7 +117,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     // Return a JSON response indicating success.
     return new Response(
-      JSON.stringify({ status: "meow", result: taskResult }),
+      JSON.stringify({ status: "success", result: taskResult }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
   } catch (error) {
@@ -315,7 +313,7 @@ async function getOAuthToken(): Promise<string> {
 /**
  * Triggers a Trigger.dev task using file metadata.
  *
- * @param {DriveMetadata} fileMetadata - The metadata object returned by the Google Drive API.
+ * @param {string} content - The content to be processed by the Trigger.dev task.
  * @returns {Promise<void>} - A promise that resolves when the task is triggered.
  */
 async function callTriggerDevTask(content: string): Promise<void> {
