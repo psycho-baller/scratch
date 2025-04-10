@@ -9,7 +9,6 @@ import type { openaiTask } from "../../../trigger/openai.ts";
 // Import djwt functions for creating and handling JWTs
 import { create, getNumericDate } from "https://deno.land/x/djwt@v2.8/mod.ts";
 
-const GOOGLE_OAUTH_TOKEN = Deno.env.get("GOOGLE_OAUTH_TOKEN");
 // Start the Deno server to handle incoming HTTP requests
 // Start a server using Deno.serve that will handle incoming HTTP requests.
 Deno.serve(async (req) => {
