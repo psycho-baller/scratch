@@ -3,9 +3,28 @@
 
 import re
 from typing import Any, Dict, List, Optional
-from pyodide.ffi import JsProxy, to_py
+import base64
+
 
 # ---------- Helpers ----------
+def _to_py_str(val):
+    """Turn a JsProxy (or anything) into a Python str safely."""
+    try:
+        # Works in Pyodide ≥0.21
+        from pyodide.ffi import JsProxy
+
+        if isinstance(val, JsProxy):
+            try:
+                # For JS strings, this returns a real Python str
+                return val.to_py()
+            except Exception:
+                return str(val)
+    except Exception:
+        pass
+    # If it's already bytes, make a str for consistency
+    if isinstance(val, bytes):
+        return val.decode("ascii", errors="ignore")
+    return str(val)
 
 
 def coalesce_md_and_ai() -> (str, Dict[str, Any], Optional[str]):
@@ -15,16 +34,18 @@ def coalesce_md_and_ai() -> (str, Dict[str, Any], Optional[str]):
       - ai (your AI `output` dict)
       - fileName (optional)
     """
-    md = _input.first().binary.md
+    binary_md_js = _input.first().binary.md
+    binary_md = _to_py_str(binary_md_js)
+    md_text = base64.b64decode(binary_md["data"]).decode("utf-8")
     ai = _input.first().json.output or {}
-    file_name = "2025-08-13.md"
+    file_name = binary_md["fileName"]
 
-    if not md:
-        try:
-            ext = _("Extract From File").first()
-            md = (ext.get("json") or {}).get("md")
-        except Exception:
-            pass
+    # if not md:
+    #     try:
+    #         ext = _("Extract From File").first()
+    #         md = (ext.get("json") or {}).get("md")
+    #     except Exception:
+    #         pass
 
     if not ai:
         try:
@@ -33,7 +54,7 @@ def coalesce_md_and_ai() -> (str, Dict[str, Any], Optional[str]):
         except Exception:
             pass
 
-    return str(md or ""), dict(ai or {}), file_name
+    return str(md_text or ""), dict(ai or {}), file_name
 
 
 def maybe_int(v):
@@ -95,6 +116,7 @@ def upsert_section(md_text: str, heading: str, content: Optional[str]) -> str:
 
 # ---------- Main ----------
 md, ai, file_name = coalesce_md_and_ai()
+print(md)
 
 if not isinstance(md, str) or not md.strip():
     raise ValueError(
