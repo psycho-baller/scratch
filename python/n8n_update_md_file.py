@@ -27,6 +27,144 @@ def _to_ascii_str(val) -> str:
     return str(val)
 
 
+def _parse_title_date(file_title: Optional[str]) -> Tuple[dt.date, str]:
+    """
+    Try to get a date from a file title like 'YYYY-MM-DD' (with or without .md).
+    Returns (date, normalized_title_string).
+    Fallback to today if parsing fails.
+    """
+    today = dt.date.today()
+    if not file_title:
+        return today, today.isoformat()
+
+    # strip extension if present
+    title = re.sub(r"\.md$", "", str(file_title).strip(), flags=re.I)
+
+    # match YYYY-MM-DD at start or whole title
+    m = re.match(r"^\s*(\d{4})-(\d{2})-(\d{2})\s*$", title)
+    if not m:
+        # try leading date before extra text: "YYYY-MM-DD something"
+        m = re.match(r"^\s*(\d{4})-(\d{2})-(\d{2})", title)
+
+    if m:
+        y, mo, d = map(int, m.groups())
+        try:
+            dd = dt.date(y, mo, d)
+            return dd, dd.isoformat()
+        except Exception:
+            pass
+
+    return today, today.isoformat()
+
+
+def _iso_week_link(d: dt.date) -> str:
+    """
+    Build the 'YYYY-WWW' link like moment.format('YYYY-[W]WW').
+    Uses ISO-year/weeks so weeks near year-boundaries resolve correctly.
+    """
+    iso_year, iso_week, _ = d.isocalendar()
+    return f"{iso_year}-W{iso_week:02d}"
+
+
+def _build_daily_template(*, file_title: Optional[str] = None) -> Tuple[str, str]:
+    """
+    Python port of your Templater template.
+    Returns (markdown_text, file_name).
+    """
+    date_obj, normalized_title = _parse_title_date(file_title)
+    prev_day = (date_obj - dt.timedelta(days=1)).isoformat()
+    next_day = (
+        date_obj + dt.timedelta(days=1)
+    ).isoformat()  # computed for parity; not used below
+    week_link = _iso_week_link(date_obj)
+    created = dt.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+    md = f"""---
+tags:
+  - reviews/daily
+Created: {created}
+Headings:
+  - "[[{normalized_title}#Improvements|💪]] [[{normalized_title}#Obstacles|🚧]]"
+  - "[[{normalized_title}#Accomplishments|✅]]"
+Parent: "[[My Calendar/My Weekly Notes/{week_link}|{week_link}]]"
+Dreams:
+Summary:
+Mindfulness:
+Discipline:
+Engagement:
+Focus:
+Courage:
+Authenticity:
+Purpose:
+Energy:
+Communication:
+Uniqueness:
+Rating:
+
+---
+## Reminders
+
+**Today's Big 3**
+1.
+2.
+3.
+
+Remember ![[{prev_day}#Improvements]]
+
+## Journals
+
+- [ ] **3 things I'm grateful for in my life & about myself
+- [ ] mentally planned out how to achieve my top 5 habits
+### Morning Mindset
+
+**I'm excited today for:**
+
+**One word to describe the person I want to be today would be \_ because:**
+
+**Someone who needs me on my a-game/needs my help today is:**
+
+**What's a potential obstacle/stressful situation for today and how would my best self deal with it?**
+
+**Someone I could surprise with a note, gift, or sign of appreciation is:**
+
+**One action I could take today to demonstrate excellence or real value is:**
+
+**One bold/unfomfortable action I could take today is:**
+
+**An overseeing high performance coach would tell me today that:**
+
+**What would I do if I knew I wouldn't fail**
+
+**What is the goal?**
+
+**What is the bottleneck?**
+
+**I know today would be successful if I did or felt this by the end:**
+
+## Reflection
+### Accomplishments
+%% What did I get done today that I would like to remember for the rest of my life? %%
+
+### Obstacles
+%% What was an obstacle I faced, how did I deal with it, and what can I learn from for the future? %%
+
+### Improvements
+%% What can I do tomorrow to be 1% better? How can I increase my ratings?  %%
+
+## Today's Notes
+
+```dataview
+TABLE file.tags as "Note Type", Created
+from ""
+WHERE contains(dateformat(Created, "yyyy-MM-dd"), this.file.name)
+SORT file.name
+```
+
+"""
+    file_name = f"{normalized_title}.md"
+    return md, file_name
+
+
 def coalesce_md_and_ai() -> (str, Dict[str, Any], Optional[str]):
     """
     Return:
@@ -37,11 +175,28 @@ def coalesce_md_and_ai() -> (str, Dict[str, Any], Optional[str]):
     """
     item = _input.first()
 
-    # Binary -> base64 -> UTF-8 text
-    bin_md = _to_py(item.binary.md)  # dict-like: {'data': '...', 'fileName': '...'}
-    b64_str = _to_ascii_str(bin_md["data"])  # handle JsProxy
-    md_text = base64.b64decode(b64_str.encode("ascii")).decode("utf-8")
-    file_name = bin_md.get("fileName") or "note.md"
+    # Try to read binary -> text
+    try:
+        # Binary -> base64 -> UTF-8 text
+        bin_md = _to_py(item.binary.md)  # {'data': '...', 'fileName': '...'}
+        b64_str = _to_ascii_str(bin_md["data"])
+        md_text = base64.b64decode(b64_str.encode("ascii")).decode("utf-8")
+        file_name = bin_md.get("fileName") or "note.md"
+        # If we do have the file loaded, we keep it as-is.
+    except Exception:
+        # No incoming file → create a fresh one from the template (Python port of Templater)
+        # Prefer a title/date provided by upstream JSON (optional), else today.
+        title_hint = None
+        try:
+            # try common fields you might set upstream
+            title_hint = (
+                item.json.get("fileName")
+                or item.json.get("title")
+                or item.json.get("date")
+            )
+        except Exception:
+            pass
+        md_text, file_name = _build_daily_template(file_title=title_hint)
 
     # AI payload (as you already had)
     ai = item.json.output or {}
