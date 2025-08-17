@@ -1,7 +1,9 @@
 # n8n Code node (Language: Python)
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import base64
+import datetime as dt
+from textwrap import dedent
 
 # ---------- Helpers ----------
 
@@ -79,88 +81,95 @@ def _build_daily_template(*, file_title: Optional[str] = None) -> Tuple[str, str
     week_link = _iso_week_link(date_obj)
     created = dt.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
-    md = f"""---
-tags:
-  - reviews/daily
-Created: {created}
-Headings:
-  - "[[{normalized_title}#Improvements|💪]] [[{normalized_title}#Obstacles|🚧]]"
-  - "[[{normalized_title}#Accomplishments|✅]]"
-Parent: "[[My Calendar/My Weekly Notes/{week_link}|{week_link}]]"
-Dreams:
-Summary:
-Mindfulness:
-Discipline:
-Engagement:
-Focus:
-Courage:
-Authenticity:
-Purpose:
-Energy:
-Communication:
-Uniqueness:
-Rating:
+    md = (
+        dedent(
+            f"""\
+        ---
+        tags:
+          - reviews/daily
+        Created: {created}
+        Headings:
+          - "[[{normalized_title}#Improvements|💪]] [[{normalized_title}#Obstacles|🚧]]"
+          - "[[{normalized_title}#Accomplishments|✅]]"
+        Parent: "[[My Calendar/My Weekly Notes/{week_link}|{week_link}]]"
+        Dreams:
+        Summary:
+        Mindfulness:
+        Discipline:
+        Engagement:
+        Focus:
+        Courage:
+        Authenticity:
+        Purpose:
+        Energy:
+        Communication:
+        Uniqueness:
+        Rating:
 
----
-## Reminders
+        ---
+        ## Reminders
 
-**Today's Big 3**
-1.
-2.
-3.
+        **Today's Big 3**
+        1.
+        2.
+        3.
 
-Remember ![[{prev_day}#Improvements]]
+        Remember ![[{prev_day}#Improvements]]
 
-## Journals
+        ## Journals
 
-- [ ] **3 things I'm grateful for in my life & about myself
-- [ ] mentally planned out how to achieve my top 5 habits
-### Morning Mindset
+        - [ ] **3 things I'm grateful for in my life & about myself
+        - [ ] mentally planned out how to achieve my top 5 habits
+        ### Morning Mindset
 
-**I'm excited today for:**
+        **I'm excited today for:**
 
-**One word to describe the person I want to be today would be \_ because:**
+        **One word to describe the person I want to be today would be \\_ because:**
 
-**Someone who needs me on my a-game/needs my help today is:**
+        **Someone who needs me on my a-game/needs my help today is:**
 
-**What's a potential obstacle/stressful situation for today and how would my best self deal with it?**
+        **What's a potential obstacle/stressful situation for today and how would my best self deal with it?**
 
-**Someone I could surprise with a note, gift, or sign of appreciation is:**
+        **Someone I could surprise with a note, gift, or sign of appreciation is:**
 
-**One action I could take today to demonstrate excellence or real value is:**
+        **One action I could take today to demonstrate excellence or real value is:**
 
-**One bold/unfomfortable action I could take today is:**
+        **One bold/unfomfortable action I could take today is:**
 
-**An overseeing high performance coach would tell me today that:**
+        **An overseeing high performance coach would tell me today that:**
 
-**What would I do if I knew I wouldn't fail**
+        **What would I do if I knew I wouldn't fail**
 
-**What is the goal?**
+        **What is the goal?**
 
-**What is the bottleneck?**
+        **What is the bottleneck?**
 
-**I know today would be successful if I did or felt this by the end:**
+        **I know today would be successful if I did or felt this by the end:**
 
-## Reflection
-### Accomplishments
-%% What did I get done today that I would like to remember for the rest of my life? %%
+        ## Reflection
+        ### Accomplishments
+        %% What did I get done today that I would like to remember for the rest of my life? %%
 
-### Obstacles
-%% What was an obstacle I faced, how did I deal with it, and what can I learn from for the future? %%
+        ### Obstacles
+        %% What was an obstacle I faced, how did I deal with it, and what can I learn from for the future? %%
 
-### Improvements
-%% What can I do tomorrow to be 1% better? How can I increase my ratings?  %%
+        ### Improvements
+        %% What can I do tomorrow to be 1% better? How can I increase my ratings?  %%
 
-## Today's Notes
+        ## Today's Notes
 
-```dataview
-TABLE file.tags as "Note Type", Created
-from ""
-WHERE contains(dateformat(Created, "yyyy-MM-dd"), this.file.name)
-SORT file.name
-```
-
-"""
+        ```dataview
+        TABLE file.tags as "Note Type", Created
+        from ""
+        WHERE contains(dateformat(Created, "yyyy-MM-dd"), this.file.name)
+        SORT file.name
+        ```
+        """
+        )
+        .replace("\r\n", "\n")
+        .rstrip()
+        + "\n"
+    )
     file_name = f"{normalized_title}.md"
     return md, file_name
 
@@ -199,13 +208,7 @@ def coalesce_md_and_ai() -> (str, Dict[str, Any], Optional[str]):
         md_text, file_name = _build_daily_template(file_title=title_hint)
 
     # AI payload (as you already had)
-    ai = item.json.output or {}
-    if not ai:
-        try:
-            ai_node = _("AI Transform").first()
-            ai = (ai_node.get("json") or {}).get("output") or {}
-        except Exception:
-            pass
+    ai = _("AI Tools Agent2").first().json.output
 
     return md_text, dict(ai or {}), file_name
 
