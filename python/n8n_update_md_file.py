@@ -361,5 +361,16 @@ storyworthy = ai.get("storyworthy")
 if isinstance(storyworthy, bool) and storyworthy and "tags:" in md:
     md = re.sub(r"(?m)^tags:\s*\n", "tags:\n  - storyworthy\n", md)
 
+md_base64 = base64.b64encode(md.encode("utf-8")).decode("utf-8")
 # Output for Convert to File → Google Drive Update
-return {"json": {"fileName": file_name, "md": md}}
+return [
+    {
+        "binary": {
+            "data": {
+                "data": md_base64,
+                "fileName": file_name,
+                "mimeType": "text/markdown",
+            }
+        }
+    }
+]
